@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Szófajalapozó – gyakorlás és tudáspróba</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#253449;background:#f3f6fc}*{box-sizing:border-box}body{margin:0}header{background:#214e7a;color:white;padding:22px max(18px,calc((100vw - 1060px)/2))}header h1{margin:0;font-size:clamp(1.55rem,3vw,2.15rem)}header p{margin:.35rem 0 0;color:#e3efff}main{max-width:1060px;margin:25px auto;padding:0 16px 35px}.card{background:white;border-radius:19px;box-shadow:0 7px 28px #28486613;padding:clamp(18px,3vw,30px);margin-bottom:18px}.eyebrow{font-weight:750;color:#3569a0;font-size:.9rem;letter-spacing:.035em;text-transform:uppercase}.bar{height:10px;background:#e6edf6;border-radius:20px;overflow:hidden;margin:13px 0 25px}.bar>div{height:100%;background:#37a68d;transition:width .2s}.word{background:#eef5ff;color:#184979;font-weight:800;font-size:clamp(1.8rem,5vw,3rem);text-align:center;border-radius:15px;padding:25px;margin:18px 0}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:13px 17px;font-weight:700;background:#e8f0f8;color:#1d4772}button:hover{filter:brightness(.96)}button:focus-visible{outline:3px solid #e8a535;outline-offset:2px}.option{min-height:66px;border:2px solid #d6e4ef;background:#fafcff}.option.selected{border-color:#2d6eb2;background:#dceeff}.option.correct{border-color:#25956c;background:#ddf7ec}.option.wrong{border-color:#cc6b63;background:#ffe9e6}.primary{background:#226aa7;color:white}.secondary{background:#edf2fa}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.message{border-radius:12px;padding:16px;margin:18px 0;background:#eef5ff;line-height:1.55}.message.good{background:#e4f8ed;color:#155d3e}.message.warn{background:#fff3dd;color:#74500c}.muted{color:#647386}.hidden{display:none!important}.chips{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}.chip{background:#e8f0f8;border-radius:999px;padding:8px 12px;font-weight:700;font-size:.92rem}.words{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.tile{text-align:left;background:#fff9e7;border:2px solid #e7d9af;min-height:57px;word-break:break-word}.tile.selected{background:#dceeff;border-color:#3974b6}.tile.assigned{background:#e1f2e9;border-color:#76b69d}.tile.error{background:#ffe7e3;border-color:#d88078}.category{background:#f0f5fc;border:2px solid #d7e3ef;min-height:78px;text-align:center}.category.active{border-color:#2b77b1;background:#e1f1ff}.category .count{display:block;font-size:.85rem;color:#647386;margin-top:5px}.small{font-size:.92rem}.review{padding:12px 0;border-bottom:1px solid #e2eaf3}.review:last-child{border-bottom:0}.score{font-size:2.5rem;font-weight:800;color:#226aa7}.note{border-left:4px solid #3d88b7;padding-left:12px}.footer{color:#68788b;font-size:.83rem;text-align:center;padding:0 15px 26px}select{font:inherit;border:1px solid #9ebad5;border-radius:8px;padding:9px;background:white;color:#253449}label{display:block;margin:0 0 6px;font-weight:700}@media(max-width:740px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.words{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:18px}.option{min-height:58px}}@media(max-width:400px){.words{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>Szófajalapozó</h1><p>Gyakorolj, értsd meg, majd válogasd szét!</p></header>
+<main id="app" aria-live="polite"></main><div class="footer">Első tesztváltozat · A pontozás most a böngészőben történik, még nem küld eredményt a Moodle-ba.</div>
+<script>
+"use strict";
+const cats=["ige","főnév","melléknév","számnév","névmás","főnévi igenév","névelő","névutó"];
+// [szó, kategória, tanulást segítő magyarázat] – a gyakorlás és a tudáspróba külön készletből dolgozik.
+const practice=[
+["olvasgat","ige","Cselekvést fejez ki: valaki olvasgat."],["virágzik","ige","Történést, folyamatot fejez ki: a növény virágzik."],
+["asztal","főnév","Egy tárgyat nevez meg."],["Budapest","főnév","Egy földrajzi hely tulajdonneve."],
+["ropogós","melléknév","Tulajdonságot fejez ki: milyen?"],["alacsony","melléknév","Valakinek vagy valaminek a tulajdonságát jelöli."],
+["hét","számnév","Határozott mennyiséget jelöl: mennyi?"],["első","számnév","Sorrendet jelöl: hányadik?"],
+["én","névmás","Beszélő személyre utal a neve helyett."],["olyan","névmás","Tulajdonságra utal, anélkül hogy megnevezné azt."],
+["korcsolyázni","főnévi igenév","Cselekvést nevez meg; a -ni képző segít felismerni."],["felfedezni","főnévi igenév","A -ni végű alak az ige főnévi igenévi alakja."],
+["az","névelő","Főnév előtt állva határozott névelő."],["egy","névelő","Főnév előtt állva határozatlan névelő (pl. egy alma)."],
+["mellett","névutó","Főnév után állhat, térbeli viszonyt jelöl: a ház mellett."],["után","névutó","Viszonyt jelöl: az óra után."]
+];
+const exam=[
+["nevet","ige","Cselekvést fejez ki."],["pihen","ige","Cselekvést, állapotot jelöl."],["csillog","ige","Folyamatot, történést fejez ki."],["keres","ige","Cselekvést fejez ki."],["álmodik","ige","Ige: valaki álmodik."],
+["erdő","főnév","Egy helyet, dolgot nevez meg."],["Fanni","főnév","Személynév, tehát tulajdonnév."],["öröm","főnév","Elvont fogalmat, érzelmet nevez meg."],["könyv","főnév","Egy tárgyat nevez meg."],["kutya","főnév","Egy élőlényt nevez meg."],
+["édes","melléknév","Tulajdonságot fejez ki."],["zöld","melléknév","Színt, vagyis tulajdonságot jelöl."],["ügyes","melléknév","Valakinek a tulajdonságát jelöli."],["csendes","melléknév","Tulajdonságot jelöl."],["vidám","melléknév","Tulajdonságot fejez ki."],
+["három","számnév","Mennyiséget jelöl."],["kilencszáz","számnév","Határozott mennyiséget jelöl."],["második","számnév","Sorrendet jelöl."],["negyed","számnév","Törtrészt jelöl."],["tizenöt","számnév","Mennyiséget jelöl."],
+["te","névmás","Személyt helyettesítő személyes névmás."],["valaki","névmás","Személyre utal, de nem nevezi meg."],["milyen","névmás","Tulajdonságra kérdez rá, kérdő névmás."],["ebben","névmás","Rámutat valamire: mutató névmás."],["mi","névmás","A névszót helyettesíti: kérdő névmás."],
+["rajzolni","főnévi igenév","A -ni képzőből felismerhető főnévi igenév."],["úszni","főnévi igenév","Cselekvést nevez meg, -ni képzővel."],["énekelni","főnévi igenév","A -ni képzőből felismerhető főnévi igenév."],["játszani","főnévi igenév","Ige főnévi igenévi alakja."],["gondolkodni","főnévi igenév","A -ni képző jelzi a főnévi igenevet."],
+["a","névelő","Főnév előtt álló határozott névelő."],["az","névelő","Főnév előtt álló határozott névelő."],["egy","névelő","Főnév előtt álló határozatlan névelő."],["A","névelő","Mondat elején álló határozott névelő."],["Az","névelő","Határozott névelő."],
+["között","névutó","Viszonyt fejez ki: a fák között."],["előtt","névutó","Viszonyt fejez ki: az iskola előtt."],["alatt","névutó","Viszonyt fejez ki: az asztal alatt."],["mögött","névutó","Viszonyt fejez ki: a ház mögött."],["felé","névutó","Irányt jelöl: az iskola felé."]
+];
+const key="szofaj-alapozo-v1";
+function load(){try{return JSON.parse(localStorage.getItem(key))||{}}catch{return {}}}
+let state=load();
+if(!state.stage)state={stage:"practice",pi:0,tryCount:0,practiceDone:false,attempt:0};
+const app=document.getElementById("app");
+function save(){try{localStorage.setItem(key,JSON.stringify(state))}catch{}}
+function rand(list){let a=[...list];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function startExam(){let pool=[];cats.forEach(cat=>pool.push(...rand(exam.filter(x=>x[1]===cat)).slice(0,3)));state.stage="exam";state.round=rand(pool);state.assign={};state.selected=null;state.checked=false;state.firstScore=null;state.attempt=(state.attempt||0)+1;save();render()}
+function render(){if(state.stage==="practice")return drawPractice();if(state.stage==="exam")return drawExam();return drawFinished()}
+function drawPractice(){
+ const item=practice[state.pi]||practice[0];let done=state.pi>=practice.length;
+ if(done){state.practiceDone=true;state.stage="ready";save();return drawFinished()}
+ app.innerHTML='<section class="card"><div class="eyebrow">1. Tanulószakasz · '+(state.pi+1)+' / '+practice.length+'</div><div class="bar"><div style="width:'+Math.round(state.pi/practice.length*100)+'%"></div></div><h2>Melyik szófajhoz tartozik?</h2><div class="word">'+esc(item[0])+'</div><div class="grid">'+cats.map(c=>'<button class="option" data-guess="'+esc(c)+'">'+esc(c)+'</button>').join("")+'</div><div id="feedback" aria-live="polite"></div><p class="muted small">A gyakorlásban nyugodtan hibázhatsz: segítséget kapsz, és nincs pontlevonás.</p></section>';
+ document.querySelectorAll("[data-guess]").forEach(b=>b.onclick=()=>{
+ const chosen=b.dataset.guess;document.querySelectorAll("[data-guess]").forEach(x=>x.classList.toggle("selected",x===b));
+ if(chosen===item[1]){document.getElementById("feedback").innerHTML='<div class="message good"><strong>Helyes!</strong> '+esc(item[2])+'</div><div class="actions"><button class="primary" id="next">Következő szó →</button></div>';document.querySelectorAll("[data-guess]").forEach(x=>x.disabled=true);document.getElementById("next").onclick=()=>{state.pi++;state.tryCount=0;save();render()}}
+ else{state.tryCount=(state.tryCount||0)+1;save();let hint=state.tryCount<2?'Gondold át: mit nevez meg ez a szó? Második próbálkozásnál már megmutatom a helyes kategóriát.':'Segítség: a helyes szófaj <strong>'+esc(item[1])+'</strong>. '+esc(item[2]);document.getElementById("feedback").innerHTML='<div class="message warn"><strong>Még nem ez az.</strong> '+hint+'</div>'}
+ });
+}
+function drawFinished(){
+ if(state.stage==="ready"){app.innerHTML='<section class="card"><div class="eyebrow">A gyakorlás kész</div><h2>Ügyes vagy! Jöhet a tudáspróba?</h2><p>24 szót kell besorolnod 8 szófajba, mindegyikből 3-at. Minden helyes első besorolás 1 pontot ér. Ellenőrzés után a hibákat tanulási céllal kijavíthatod, de a pontszámod már nem változik.</p><div class="actions"><button id="start" class="primary">Induljon a 24 pontos tudáspróba</button><button id="practiceAgain">Gyakorlás újra</button></div></section>';document.getElementById("start").onclick=startExam;document.getElementById("practiceAgain").onclick=()=>{state.stage="practice";state.pi=0;state.tryCount=0;save();render()};return}
+ app.innerHTML='<section class="card"><h2>Az eredményed</h2><div class="score">'+state.firstScore+' / 24 pont</div><p>A pontszám az első ellenőrzéskor rögzült. A javítás a tanulást szolgálja.</p><div class="actions"><button class="primary" id="restart">Új tudáspróba</button><button id="practiceAgain">Gyakorlás újra</button></div></section>';
+ document.getElementById("restart").onclick=startExam;document.getElementById("practiceAgain").onclick=()=>{state.stage="practice";state.pi=0;state.tryCount=0;save();render()};
+}
+function drawExam(){
+ const assigned=Object.keys(state.assign||{}).length;const current=state.selected;
+ let items=state.round.map((it,i)=>{let chosen=state.assign[i],bad=state.checked&&chosen!==it[1];return '<button class="tile '+(current===i?'selected ':chosen?'assigned ':'')+(bad?'error':'')+'" data-word="'+i+'">'+esc(it[0])+(chosen?'<div class="small muted">'+esc(chosen)+'</div>':'')+'</button>'}).join("");
+ app.innerHTML='<section class="card"><div class="eyebrow">2. Tudáspróba · 24 pont</div><h2>Válogasd szét a szavakat!</h2><p class="note">Kattints egy szóra, utána arra a szófajra, amelyhez tartozik. A besorolást ellenőrzés előtt bármikor megváltoztathatod.</p><div class="chips"><span class="chip">Besorolva: '+assigned+'/24</span>'+(state.firstScore!==null?'<span class="chip">Első eredmény: '+state.firstScore+'/24</span>':'')+'</div><h3>Szavak</h3><div class="words">'+items+'</div><h3>Szófajok</h3><div class="grid">'+cats.map(cat=>'<button class="category '+(current!==null?'active':'')+'" data-cat="'+esc(cat)+'">'+esc(cat)+'<span class="count">'+Object.values(state.assign).filter(v=>v===cat).length+' szó</span></button>').join("")+'</div><div class="actions">'+(!state.checked?'<button class="primary" id="check" '+(assigned<24?'disabled':'')+'>Első ellenőrzés és pontozás</button>':'<button class="primary" id="finish">Javítás befejezése</button><button id="show">Megoldások és magyarázatok</button>')+'</div><div id="feedback" aria-live="polite"></div></section>';
+ document.querySelectorAll("[data-word]").forEach(b=>b.onclick=()=>{state.selected=Number(b.dataset.word);save();drawExam()});
+ document.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{if(state.selected===null){document.getElementById("feedback").innerHTML='<div class="message warn">Először válassz ki egy szót!</div>';return}state.assign[state.selected]=b.dataset.cat;state.selected=null;save();drawExam()});
+ if(!state.checked){document.getElementById("check").onclick=()=>{state.firstScore=state.round.reduce((n,it,i)=>n+(state.assign[i]===it[1]?1:0),0);state.checked=true;state.selected=null;save();drawExam()}}
+ else{
+ let errors=state.round.filter((it,i)=>state.assign[i]!==it[1]).length;
+ document.getElementById("feedback").innerHTML='<div class="message '+(errors===0?'good':'warn')+'"><strong>Rögzített pontszám: '+state.firstScore+'/24.</strong> '+(errors?'Még '+errors+' besorolás hibás. A pirossal jelölt szavak áthelyezhetők, a pontszám már nem változik.':'Minden szó a megfelelő helyre került!')+'</div>';
+ document.getElementById("finish").onclick=()=>{state.stage="done";save();render()};
+ document.getElementById("show").onclick=()=>{document.getElementById("feedback").innerHTML='<div class="message"><h3>Megoldások és magyarázatok</h3>'+state.round.map(it=>'<div class="review"><strong>'+esc(it[0])+' → '+esc(it[1])+'</strong><div>'+esc(it[2])+'</div></div>').join("")+'</div>'};
+ }
+}
+render();
+</script></body></html>
