@@ -6,7 +6,8 @@
 .exam-words{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.exam-word{background:#fffaf0;border:2px solid #e7d9af;min-height:80px;text-align:left;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:7px;min-width:0}.exam-word strong{font-size:1.1rem;overflow-wrap:anywhere}.exam-word:hover{border-color:#4485bc}.exam-word.error{border-color:#ca625e;background:#fff0ed}.exam-word.done{background:#f4f9fc}.pos-tag{display:inline-block;border-radius:7px;padding:4px 9px;font-size:.82rem;font-weight:800;color:white}.pos-tag.névmás{color:#222}.pos-popup{position:fixed;z-index:50;background:white;border:2px solid #a9bfd2;border-radius:13px;box-shadow:0 14px 35px #142b4560;padding:10px;width:min(330px,calc(100vw - 20px));max-height:min(500px,75vh);overflow:auto}.pos-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}.pos-options button{border-radius:8px;color:white;text-align:center;font-weight:800;min-height:47px;padding:9px 5px;font-size:.89rem}.pos-options button[data-cat="névmás"]{color:#222}.pos-close{display:block;margin-left:auto;margin-bottom:7px;padding:5px 10px;background:#e9eef5}@media(max-width:740px){.exam-words{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:410px){.exam-words{grid-template-columns:1fr}}
 </style></head><body>
 <header><h1>Szófajalapozó</h1><p>Gyakorolj, értsd meg, majd válogasd szét!</p><nav class="toolbar" aria-label="Feladatmód"><button id="frontMode">Közös gyakorlás</button><button id="studentMode">Önálló gyakorlás és tudáspróba</button></nav></header>
-<main id="app" aria-live="polite"></main><div class="footer">Első tesztváltozat · A pontozás most a böngészőben történik, még nem küld eredményt a Moodle-ba.</div>
+<main id="app" aria-live="polite"></main><div class="footer">Böngészőben és Moodle SCORM 1.2 környezetben is használható.</div>
+<script src="scorm-runtime.js"></script>
 <script>
 "use strict";
 const cats=["ige","főnév","melléknév","számnév","névmás","főnévi igenév","névelő","névutó"];
@@ -58,11 +59,32 @@ document.getElementById("frontMode").onclick=()=>{frontMode=true;frontIndex=0;fr
 document.getElementById("studentMode").onclick=()=>{frontMode=false;render()};
 
 const key="szofaj-alapozo-v1";
-function load(){try{return JSON.parse(localStorage.getItem(key))||{}}catch{return {}}}
+const scorm=window.SzofajSCORM;
+function packState(s){
+ return {v:1,stage:s.stage,pi:s.pi||0,t:s.tryCount||0,p:s.practiceDone?1:0,a:s.attempt||0,
+ po:s.practiceOrder||null,r:s.round?s.round.map(item=>exam.indexOf(item)):null,
+ as:s.assign?Object.entries(s.assign).map(([i,cat])=>[Number(i),cats.indexOf(cat)]):null,
+ ch:s.checked?1:0,sc:s.firstScore};
+}
+function unpackState(d){
+ if(!d||d.v!==1)return null;
+ if(d.r&&d.r.some(n=>!Number.isInteger(n)||n<0||n>=exam.length))return null;
+ return {stage:d.stage||"practice",pi:d.pi||0,tryCount:d.t||0,practiceDone:!!d.p,attempt:d.a||0,
+ practiceOrder:d.po||null,round:d.r?d.r.map(i=>exam[i]):null,
+ assign:Object.fromEntries((d.as||[]).map(([i,j])=>[i,cats[j]])),checked:!!d.ch,
+ firstScore:d.sc===undefined?null:d.sc,selected:null};
+}
+function load(){
+ if(scorm&&scorm.isConnected)return unpackState(scorm.loadState())||{};
+ try{return JSON.parse(localStorage.getItem(key))||{}}catch{return {}}
+}
 let state=load();
 if(!state.stage)state={stage:"practice",pi:0,tryCount:0,practiceDone:false,attempt:0};
 const app=document.getElementById("app");
-function save(){try{localStorage.setItem(key,JSON.stringify(state))}catch{}}
+function save(){
+ if(scorm&&scorm.isConnected){scorm.saveState(packState(state));return}
+ try{localStorage.setItem(key,JSON.stringify(state))}catch{}
+}
 function rand(list){let a=[...list];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function startExam(){let pool=[];cats.forEach(cat=>pool.push(...rand(exam.filter(x=>x[1]===cat)).slice(0,3)));state.stage="exam";state.round=rand(pool);state.assign={};state.selected=null;state.checked=false;state.firstScore=null;state.attempt=(state.attempt||0)+1;save();render()}
@@ -80,8 +102,8 @@ function drawPractice(){
 }
 function drawFinished(){
  if(state.stage==="ready"){app.innerHTML='<section class="card"><div class="eyebrow">A gyakorlás kész</div><h2>Ügyes vagy! Jöhet a tudáspróba?</h2><p>24 szót kell besorolnod 8 szófajba, mindegyikből 3-at. Minden helyes első besorolás 1 pontot ér. Ellenőrzés után a hibákat tanulási céllal kijavíthatod, de a pontszámod már nem változik.</p><div class="actions"><button id="start" class="primary">Induljon a 24 pontos tudáspróba</button><button id="practiceAgain">Gyakorlás újra</button></div></section>';document.getElementById("start").onclick=startExam;document.getElementById("practiceAgain").onclick=()=>{state.stage="practice";state.pi=0;state.tryCount=0;state.practiceOrder=null;save();render()};return}
- app.innerHTML='<section class="card"><h2>Az eredményed</h2><div class="score">'+state.firstScore+' / 24 pont</div><p>A pontszám az első ellenőrzéskor rögzült. A javítás a tanulást szolgálja.</p><div class="actions"><button class="primary" id="restart">Új tudáspróba</button><button id="practiceAgain">Gyakorlás újra</button></div></section>';
- document.getElementById("restart").onclick=startExam;document.getElementById("practiceAgain").onclick=()=>{state.stage="practice";state.pi=0;state.tryCount=0;state.practiceOrder=null;save();render()};
+ app.innerHTML='<section class="card"><h2>Az eredményed</h2><div class="score">'+state.firstScore+' / 24 pont</div><p>A pontszám az első ellenőrzéskor rögzült. A javítás a tanulást szolgálja.</p>'+(scorm&&scorm.isConnected?'<p class="message good">A Moodle-próbálkozás befejeződött. Új próbálkozást a Moodle-ban indíthatsz.</p>':'<div class="actions"><button class="primary" id="restart">Új tudáspróba</button><button id="practiceAgain">Gyakorlás újra</button></div>')+'</section>';
+ if(!(scorm&&scorm.isConnected)){document.getElementById("restart").onclick=startExam;document.getElementById("practiceAgain").onclick=()=>{state.stage="practice";state.pi=0;state.tryCount=0;state.practiceOrder=null;save();render()}};
 }
 const posColors={"főnév":"#007E8C","melléknév":"#E67E22","számnév":"#C0392B","ige":"#8E44AD","főnévi igenév":"#27AE60","névmás":"#F1C40F","névelő":"#7F8C8D","névutó":"#66747a"};
 function drawExam(){
@@ -92,11 +114,11 @@ function drawExam(){
  }).join("");
  app.innerHTML='<section class="card"><div class="eyebrow">2. Tudáspróba · 24 pont</div><h2>Válogasd szét a szavakat!</h2><p class="note">Kattints egy szóra, majd válaszd ki a szófaját a megjelenő színes menüből. Ellenőrzés előtt bármikor módosíthatod a besorolást.</p><div class="chips"><span class="chip">Besorolva: '+assigned+'/24</span>'+(state.firstScore!==null?'<span class="chip">Első eredmény: '+state.firstScore+'/24</span>':'')+'</div><div class="exam-words">'+words+'</div><div class="actions">'+(!state.checked?'<button class="primary" id="check" '+(assigned<24?'disabled':'')+'>Első ellenőrzés és pontozás</button>':'<button class="primary" id="finish">Javítás befejezése</button><button id="show">Megoldások és magyarázatok</button>')+'</div><div id="feedback" aria-live="polite"></div></section>';
  document.querySelectorAll("[data-word]").forEach(b=>b.onclick=()=>openPartMenu(b,Number(b.dataset.word)));
- if(!state.checked){document.getElementById("check").onclick=()=>{state.firstScore=state.round.reduce((n,it,i)=>n+(state.assign[i]===it[1]?1:0),0);state.checked=true;save();drawExam()}}
+ if(!state.checked){document.getElementById("check").onclick=()=>{state.firstScore=state.round.reduce((n,it,i)=>n+(state.assign[i]===it[1]?1:0),0);state.checked=true;save();if(scorm&&scorm.isConnected)scorm.setScore(state.firstScore);drawExam()}}
  else{
   const errors=state.round.filter((it,i)=>state.assign[i]!==it[1]).length;
   document.getElementById("feedback").innerHTML='<div class="message '+(errors===0?'good':'warn')+'"><strong>Rögzített pontszám: '+state.firstScore+'/24.</strong> '+(errors?'Még '+errors+' besorolás hibás. A pirossal jelölt szavakat újra besorolhatod, de a pontszám már nem változik.':'Minden szó megfelelő helyen van!')+'</div>';
-  document.getElementById("finish").onclick=()=>{state.stage="done";save();render()};
+  document.getElementById("finish").onclick=()=>{state.stage="done";save();if(scorm&&scorm.isConnected)scorm.complete(packState(state),state.firstScore);render()};
   document.getElementById("show").onclick=()=>{document.getElementById("feedback").innerHTML='<div class="message"><h3>Megoldások és magyarázatok</h3>'+state.round.map(it=>'<div class="review"><strong>'+esc(it[0])+' → '+esc(it[1])+'</strong><div>'+esc(it[2])+'</div></div>').join("")+'</div>'};
  }
 }
@@ -114,5 +136,5 @@ function openPartMenu(anchor,index){
  document.addEventListener("keydown",escHandler,{once:true});
 }
 
-if(new URLSearchParams(location.search).get("test")==="1")startExam();else render();
+if(!(scorm&&scorm.isConnected)&&new URLSearchParams(location.search).get("test")==="1")startExam();else render();
 </script></body></html>
