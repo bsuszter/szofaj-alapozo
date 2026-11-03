@@ -90,7 +90,7 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 function startExam(){let pool=[];cats.forEach(cat=>pool.push(...rand(exam.filter(x=>x[1]===cat)).slice(0,3)));state.stage="exam";state.round=rand(pool);state.assign={};state.selected=null;state.checked=false;state.firstScore=null;state.attempt=(state.attempt||0)+1;save();render()}
 function render(){document.getElementById("frontMode").classList.toggle("active",frontMode);document.getElementById("studentMode").classList.toggle("active",!frontMode);if(frontMode)return drawFront();if(state.stage==="practice")return drawPractice();if(state.stage==="exam")return drawExam();return drawFinished()}
 function drawPractice(){
- if(!state.practiceOrder||state.practiceOrder.length!==practice.length)state.practiceOrder=rand(practice.map((_,i)=>i));
+ if(!state.practiceOrder||state.practiceOrder.length!==practice.length){state.practiceOrder=rand(practice.map((_,i)=>i));save()}
  const item=practice[state.practiceOrder[state.pi]]||practice[0];let done=state.pi>=practice.length;
  if(done){state.practiceDone=true;state.stage="ready";save();return drawFinished()}
  app.innerHTML='<section class="card"><div class="eyebrow">1. Tanulószakasz · '+(state.pi+1)+' / '+practice.length+'</div><div class="bar"><div style="width:'+Math.round(state.pi/practice.length*100)+'%"></div></div><h2>Melyik szófajhoz tartozik?</h2><div class="word">'+esc(item[0])+'</div><div class="grid">'+cats.map(c=>'<button class="option" data-guess="'+esc(c)+'">'+esc(c)+'</button>').join("")+'</div><div id="feedback" aria-live="polite"></div><p class="muted small">A gyakorlásban nyugodtan hibázhatsz: segítséget kapsz, és nincs pontlevonás.</p></section>';
