@@ -43,14 +43,15 @@ const frontExtra=[
 ["fölött","névutó","A főnév után áll, helyviszonyt fejez ki: a ház fölött."],["mellett","névutó","A főnév után áll, helyviszonyt fejez ki: az iskola mellett."]
 ];
 const frontWords=practice.concat(frontExtra);
-let frontMode=new URLSearchParams(location.search).get("front")==="1",frontIndex=0,frontReveal=false;
+let frontMode=new URLSearchParams(location.search).get("front")==="1",frontIndex=0,frontReveal=false,frontOrder=null;
 function drawFront(){
- const item=frontWords[frontIndex];
+ if(!frontOrder)frontOrder=rand(frontWords.map((_,i)=>i));
+ const item=frontWords[frontOrder[frontIndex]];
  app.innerHTML='<section class="card"><div class="eyebrow">Közös gyakorlás · '+(frontIndex+1)+' / '+frontWords.length+'</div><div class="bar"><div style="width:'+Math.round((frontIndex+1)/frontWords.length*100)+'%"></div></div><h2>Beszéljétek meg: melyik szófajhoz tartozik?</h2><div class="word">'+esc(item[0])+'</div><div class="grid">'+cats.map(cat=>'<div class="option '+(frontReveal&&cat===item[1]?'correct':'')+'" style="display:grid;place-items:center;text-align:center;padding:10px;font-weight:700">'+esc(cat)+'</div>').join("")+'</div><div aria-live="polite">'+(frontReveal?'<div class="message good"><strong>'+esc(item[1])+'</strong> – '+esc(item[2])+'</div>':'<div class="message">Előbb beszéljétek meg a megoldást! A megoldás csak a tanári gombbal jelenik meg.</div>')+'</div><div class="actions"><button class="secondary" id="previous" '+(frontIndex===0?'disabled':'')+'>← Előző</button><button class="primary" id="reveal">'+(frontReveal?'Megoldás elrejtése':'Megoldás mutatása')+'</button><button class="secondary" id="following" '+(frontIndex===frontWords.length-1?'disabled':'')+'>Következő →</button><button class="secondary" id="restartFront">Elölről kezdjük</button></div></section>';
  document.getElementById("previous").onclick=()=>{frontIndex--;frontReveal=false;render()};
  document.getElementById("following").onclick=()=>{frontIndex++;frontReveal=false;render()};
  document.getElementById("reveal").onclick=()=>{frontReveal=!frontReveal;render()};
- document.getElementById("restartFront").onclick=()=>{frontIndex=0;frontReveal=false;render()};
+ document.getElementById("restartFront").onclick=()=>{frontIndex=0;frontReveal=false;frontOrder=null;render()};
 }
 document.getElementById("frontMode").onclick=()=>{frontMode=true;frontIndex=0;frontReveal=false;render()};
 document.getElementById("studentMode").onclick=()=>{frontMode=false;render()};
@@ -66,7 +67,8 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 function startExam(){let pool=[];cats.forEach(cat=>pool.push(...rand(exam.filter(x=>x[1]===cat)).slice(0,3)));state.stage="exam";state.round=rand(pool);state.assign={};state.selected=null;state.checked=false;state.firstScore=null;state.attempt=(state.attempt||0)+1;save();render()}
 function render(){document.getElementById("frontMode").classList.toggle("active",frontMode);document.getElementById("studentMode").classList.toggle("active",!frontMode);if(frontMode)return drawFront();if(state.stage==="practice")return drawPractice();if(state.stage==="exam")return drawExam();return drawFinished()}
 function drawPractice(){
- const item=practice[state.pi]||practice[0];let done=state.pi>=practice.length;
+ if(!state.practiceOrder||state.practiceOrder.length!==practice.length)state.practiceOrder=rand(practice.map((_,i)=>i));
+ const item=practice[state.practiceOrder[state.pi]]||practice[0];let done=state.pi>=practice.length;
  if(done){state.practiceDone=true;state.stage="ready";save();return drawFinished()}
  app.innerHTML='<section class="card"><div class="eyebrow">1. Tanulószakasz · '+(state.pi+1)+' / '+practice.length+'</div><div class="bar"><div style="width:'+Math.round(state.pi/practice.length*100)+'%"></div></div><h2>Melyik szófajhoz tartozik?</h2><div class="word">'+esc(item[0])+'</div><div class="grid">'+cats.map(c=>'<button class="option" data-guess="'+esc(c)+'">'+esc(c)+'</button>').join("")+'</div><div id="feedback" aria-live="polite"></div><p class="muted small">A gyakorlásban nyugodtan hibázhatsz: segítséget kapsz, és nincs pontlevonás.</p></section>';
  document.querySelectorAll("[data-guess]").forEach(b=>b.onclick=()=>{
@@ -76,9 +78,9 @@ function drawPractice(){
  });
 }
 function drawFinished(){
- if(state.stage==="ready"){app.innerHTML='<section class="card"><div class="eyebrow">A gyakorlás kész</div><h2>Ügyes vagy! Jöhet a tudáspróba?</h2><p>24 szót kell besorolnod 8 szófajba, mindegyikből 3-at. Minden helyes első besorolás 1 pontot ér. Ellenőrzés után a hibákat tanulási céllal kijavíthatod, de a pontszámod már nem változik.</p><div class="actions"><button id="start" class="primary">Induljon a 24 pontos tudáspróba</button><button id="practiceAgain">Gyakorlás újra</button></div></section>';document.getElementById("start").onclick=startExam;document.getElementById("practiceAgain").onclick=()=>{state.stage="practice";state.pi=0;state.tryCount=0;save();render()};return}
+ if(state.stage==="ready"){app.innerHTML='<section class="card"><div class="eyebrow">A gyakorlás kész</div><h2>Ügyes vagy! Jöhet a tudáspróba?</h2><p>24 szót kell besorolnod 8 szófajba, mindegyikből 3-at. Minden helyes első besorolás 1 pontot ér. Ellenőrzés után a hibákat tanulási céllal kijavíthatod, de a pontszámod már nem változik.</p><div class="actions"><button id="start" class="primary">Induljon a 24 pontos tudáspróba</button><button id="practiceAgain">Gyakorlás újra</button></div></section>';document.getElementById("start").onclick=startExam;document.getElementById("practiceAgain").onclick=()=>{state.stage="practice";state.pi=0;state.tryCount=0;state.practiceOrder=null;save();render()};return}
  app.innerHTML='<section class="card"><h2>Az eredményed</h2><div class="score">'+state.firstScore+' / 24 pont</div><p>A pontszám az első ellenőrzéskor rögzült. A javítás a tanulást szolgálja.</p><div class="actions"><button class="primary" id="restart">Új tudáspróba</button><button id="practiceAgain">Gyakorlás újra</button></div></section>';
- document.getElementById("restart").onclick=startExam;document.getElementById("practiceAgain").onclick=()=>{state.stage="practice";state.pi=0;state.tryCount=0;save();render()};
+ document.getElementById("restart").onclick=startExam;document.getElementById("practiceAgain").onclick=()=>{state.stage="practice";state.pi=0;state.tryCount=0;state.practiceOrder=null;save();render()};
 }
 function drawExam(){
  const assigned=Object.keys(state.assign||{}).length;const current=state.selected;
